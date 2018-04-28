@@ -9,6 +9,11 @@
 
 ros::Publisher * throttlePublisher;
 
+#define M_VERT_FRONTLEFT 1
+#define M_VERT_BACKLEFT 2
+#define M_VERT_BACKRIGHT 3
+#define M_VERT_FRONTRIGHT 4
+
 void setMotor(int num, float throttle)
 {
 	if(throttlePublisher != nullptr)
@@ -31,7 +36,10 @@ void onAxisChange(std::shared_ptr<joy::AxisChangeEvent> changeEvent)
 
 	if(changeEvent->getAxisNumber() == 1)
 	{
-		setMotor(1, changeEvent->getValue()/-32767.0);
+		//setMotor(M_VERT_FRONTLEFT, changeEvent->getValue()/-32767.0);
+		//setMotor(M_VERT_BACKLEFT, changeEvent->getValue()/-32767.0);
+		//setMotor(M_VERT_BACKRIGHT, changeEvent->getValue()/-32767.0);
+		setMotor(M_VERT_FRONTRIGHT, changeEvent->getValue()/-32767.0);
 	}
 }
 
@@ -40,7 +48,7 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "turtle_teleop");
 	ros::NodeHandle nh("turtle_teleop");
 
-	joy::Joystick joystick("/dev/input/js2");
+	joy::Joystick joystick("/dev/input/js0");
 	joystick.setButtonCallback(std::make_shared<joy::Joystick::ButtonCallback>(&onButtonChange));
 	joystick.setAxisCallback(std::make_shared<joy::Joystick::AxisCallback>(&onAxisChange));
 
