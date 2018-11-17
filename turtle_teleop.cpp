@@ -1,7 +1,7 @@
 
 #include <ros/ros.h>
 
-#include <esccontrol_msgs/ESCThrottle.h>
+#include <ros_esccontrol.h>
 
 #include "Joystick.h"
 
@@ -9,22 +9,10 @@
 
 ros::Publisher * throttlePublisher;
 
-#define M_VERT_FRONTLEFT 1
-#define M_VERT_BACKLEFT 2
-#define M_VERT_BACKRIGHT 3
-#define M_VERT_FRONTRIGHT 4
+double sidewaysPower = 0;
+double forwardsPower = 0;
+double verticalPower = 0;
 
-void setMotor(int num, float throttle)
-{
-	if(throttlePublisher != nullptr)
-	{
-		esccontrol_msgs::ESCThrottle throttleMessage;
-		throttleMessage.motor_num = num;
-		throttleMessage.power = throttle;
-		throttlePublisher->publish(throttleMessage);	
-	}
-	
-}
 
 void onButtonChange(std::shared_ptr<joy::ButtonChangeEvent> changeEvent)
 {
@@ -34,13 +22,28 @@ void onAxisChange(std::shared_ptr<joy::AxisChangeEvent> changeEvent)
 {
 	std::cout << "TestJoystick: Axis " << changeEvent->getAxisNumber() << " is now " << changeEvent->getValue() << std::endl;
 
-	if(changeEvent->getAxisNumber() == 1)
+	if(changeEvent->getAxisNumber() == 0)
 	{
-		//setMotor(M_VERT_FRONTLEFT, changeEvent->getValue()/-32767.0);
-		//setMotor(M_VERT_BACKLEFT, changeEvent->getValue()/-32767.0);
-		//setMotor(M_VERT_BACKRIGHT, changeEvent->getValue()/-32767.0);
-		setMotor(M_VERT_FRONTRIGHT, changeEvent->getValue()/-32767.0);
+		sidewaysPower = changeEvent->getValue()/-32767.0;
 	}
+	else if(changeEvent->getAxisNumber() == 1)
+	{
+		forwardsPower = changeEvent->getValue()/-32767.0;
+	}
+	else if(changeEvent->getAxisNumber() == 4)
+	{
+		verticalPower = changeEvent->getValue()/-32767.0;
+	}
+
+	
+	ros_esccontrol::setMotor(M_HORIZ_LEFT, (forwardsPower - sidewaysPower), *throttlePublisher);
+	ros_esccontrol::setMotor(M_HORIZ_RIGHT, (forwardsPower + sidewaysPower), *throttlePublisher);
+
+	float vertPower = verticalPower/2;
+	ros_esccontrol::setMotor(M_VERT_FRONTLEFT, vertPower, *throttlePublisher);
+	ros_esccontrol::setMotor(M_VERT_BACKLEFT, vertPower, *throttlePublisher);
+	ros_esccontrol::setMotor(M_VERT_BACKRIGHT, vertPower, *throttlePublisher);
+	ros_esccontrol::setMotor(M_VERT_FRONTRIGHT, vertPower, *throttlePublisher);
 }
 
 int main(int argc, char** argv)
@@ -48,11 +51,13 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "turtle_teleop");
 	ros::NodeHandle nh("turtle_teleop");
 
+
+	throttlePublisher = new ros::Publisher(nh.advertise<ros_esccontrol::ESCThrottle>("/esccontrol/esc_throttle", QUEUE_SIZE));
+
 	joy::Joystick joystick("/dev/input/js0");
 	joystick.setButtonCallback(std::make_shared<joy::Joystick::ButtonCallback>(&onButtonChange));
 	joystick.setAxisCallback(std::make_shared<joy::Joystick::AxisCallback>(&onAxisChange));
 
-	throttlePublisher = new ros::Publisher(nh.advertise<esccontrol_msgs::ESCThrottle>("/esccontrol/esc_throttle", QUEUE_SIZE));
 
 	ros::spin();
 }
